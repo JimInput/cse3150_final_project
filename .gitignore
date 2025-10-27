@@ -1,0 +1,25 @@
+# Compiled binaries
+war_game
+*.o
+*.out
+
+# Output files
+*.csv
+!test_data/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Other
+pr_pal/
+generate_solution.py
+
+*.pdf
