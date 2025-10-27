@@ -1,12 +1,13 @@
 #include "graph.h"
+#include "node.h"
 
 #include <cstdint>
 #include <ostream>
 
 void Graph::add_node(uint32_t AS) {
     if (nodes_.find(AS) == nodes_.end()) {
-        nodes_[AS] = std::make_unique<Node>(AS);
-        num_nodes_++;
+        auto [it, inserted] = nodes_.try_emplace(AS, AS);
+        if (inserted) ++num_nodes_;
      }
 }
 
@@ -16,16 +17,20 @@ void Graph::print(std::ostream& os) const {
        << "{\n";
     int node_count = 0;
     for (auto& pair : nodes_) {
-        os << *pair.second << std::endl;
+        if (node_count > 10) break;
+        os << pair.second << std::endl;
+        node_count++;
     }
+    if (node_count > 10)
+        os << "..." << std::endl;
     os << "}";
 }
 
 void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
     add_node(customer);
     add_node(provider);
-    nodes_[customer]->add_provider(provider);
-    nodes_[provider]->add_customer(customer);
+    nodes_.at(customer).add_provider(provider);
+    nodes_.at(provider).add_customer(customer);
     num_edges_++;
     num_customer_provider_++;
 }
@@ -33,8 +38,8 @@ void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
 void Graph::add_peer(uint32_t peer1, uint32_t peer2) {
     add_node(peer1);
     add_node(peer2);
-    nodes_[peer1]->add_peer(peer2);
-    nodes_[peer2]->add_peer(peer1);
+    nodes_.at(peer1).add_peer(peer2);
+    nodes_.at(peer2).add_peer(peer1);
     num_edges_++;
     num_peers_++;
 }
