@@ -1,18 +1,16 @@
 #include "node.h"
 #include "graph.h"
+#include "file_reader.h"
 #include <memory>
 #include <iostream>
 #include <utility>
 
 int main() {
-    Graph g;
-    g.add_peer(777, 4);
-    g.add_customer_provider(3, 4);
-    g.add_customer_provider(666, 4);
-    for (int i = 5; i < 7; i++) {
-        g.add_customer_provider(i, 4);
+    try {
+        Graph g = FileReader::readGraphFromCSV("data/20250901.as-rel2.txt");
+        std::cout << g << std::endl;
+        return 0;
+    } catch (std::exception) {
+        return 1;
     }
-
-    std::cout << g << std::endl;
-    return 0;
 }
