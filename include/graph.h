@@ -1,10 +1,11 @@
 #pragma once
 
-#include "node.h"
-#include <unordered_map>
-#include <memory>
 #include <cstdint>
+#include <memory>
 #include <ostream>
+#include <unordered_map>
+
+#include "node.h"
 
 class Graph {
     std::unordered_map<uint32_t, Node> nodes_;
@@ -16,17 +17,27 @@ class Graph {
     void add_node(uint32_t AS);
     void print(std::ostream& os) const;
 
-public:
-    Graph(): num_nodes_(0), num_customer_provider_(0), num_peers_(0), num_edges_(0) {}
+   public:
+    Graph() : num_nodes_(0), num_customer_provider_(0), num_peers_(0), num_edges_(0) {}
 
     void add_customer_provider(uint32_t customer, uint32_t provider);
     void add_peer(uint32_t peer1, uint32_t peer2);
 
-    const uint32_t get_num_edges() const {return num_edges_;}
-    const uint32_t get_num_nodes() const {return num_nodes_;}
-    const uint32_t get_num_customer_provider_() const {return num_customer_provider_;}
-    const uint32_t get_num_peers_() const {return num_peers_;}
-    const std::unordered_map<uint32_t, Node>& get_nodes() const {return nodes_;}
+    const uint32_t get_num_edges() const {
+        return num_edges_;
+    }
+    const uint32_t get_num_nodes() const {
+        return num_nodes_;
+    }
+    const uint32_t get_num_customer_provider() const {
+        return num_customer_provider_;
+    }
+    const uint32_t get_num_peers() const {
+        return num_peers_;
+    }
+    const std::unordered_map<uint32_t, Node>& get_nodes() const {
+        return nodes_;
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const Graph& g);
 };

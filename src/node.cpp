@@ -1,9 +1,10 @@
 #include "node.h"
-#include "helpers.h"
 
 #include <cstdint>
-#include <vector>
 #include <iostream>
+#include <vector>
+
+#include "helpers.h"
 
 void Node::print(std::ostream& os) const {
     os << "Node(" << AS_ << "):\n\tproviders={";

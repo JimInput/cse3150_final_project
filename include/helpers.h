@@ -1,7 +1,7 @@
 #pragma once
 
-#include <utility>
 #include <iostream>
+#include <utility>
 
 template <typename Con>
 void print_container(std::ostream& os, const Con& con) {

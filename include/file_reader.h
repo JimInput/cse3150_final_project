@@ -1,10 +1,10 @@
 #pragma once
 
 #include <string>
+
 #include "graph.h"
 
 class FileReader {
-public:
+   public:
     static Graph readGraphFromCSV(const std::string& path);
 };
-

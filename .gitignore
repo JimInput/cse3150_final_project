@@ -22,4 +22,6 @@ __pycache__/
 pr_pal/
 generate_solution.py
 
+environments/
+
 *.pdf

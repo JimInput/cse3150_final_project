@@ -1,28 +1,29 @@
 #include "graph.h"
-#include "node.h"
 
 #include <cstdint>
 #include <ostream>
+
+#include "node.h"
 
 void Graph::add_node(uint32_t AS) {
     if (nodes_.find(AS) == nodes_.end()) {
         auto [it, inserted] = nodes_.try_emplace(AS, AS);
         if (inserted) ++num_nodes_;
-     }
+    }
 }
 
 void Graph::print(std::ostream& os) const {
     os << "Graph():\n\tnum_nodes_=" << num_nodes_ << "\n\tnum_edges_=" << num_edges_
-       << "\n\tnum_customer_provider=" << num_customer_provider_ << "\n\tnum_peers_=" << num_peers_ << "\n"
+       << "\n\tnum_customer_provider=" << num_customer_provider_ << "\n\tnum_peers_=" << num_peers_
+       << "\n"
        << "{\n";
     int node_count = 0;
-    for (auto& pair : nodes_) {
+    for (const auto& pair : nodes_) {
         if (node_count > 10) break;
         os << pair.second << std::endl;
         node_count++;
     }
-    if (node_count > 10)
-        os << "..." << std::endl;
+    if (node_count > 10) os << "..." << std::endl;
     os << "}";
 }
 
