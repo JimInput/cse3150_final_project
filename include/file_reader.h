@@ -1,3 +1,4 @@
+// Copyright 2025 Jimmy Padilla (oJimmy05o@gmail.com)
 #pragma once
 
 #include <string>

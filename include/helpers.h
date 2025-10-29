@@ -1,3 +1,4 @@
+// Copyright 2025 Jimmy Padilla (oJimmy05o@gmail.com)
 #pragma once
 
 #include <iostream>
@@ -9,5 +10,5 @@ void print_container(std::ostream& os, const Con& con) {
     for (auto it = con.begin(); it != std::prev(con.end()); it++) {
         os << *it << ",";
     }
-    os << *std::prev(con.end());
+    os << *std::prev(con.end()) << std::endl;
 }

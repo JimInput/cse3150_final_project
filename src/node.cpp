@@ -1,3 +1,4 @@
+// Copyright 2025 Jimmy Padilla (oJimmy05o@gmail.com)
 #include "node.h"
 
 #include <cstdint>

@@ -1,6 +1,8 @@
+// Copyright 2025 Jimmy Padilla (oJimmy05o@gmail.com)
 #include "file_reader.h"
 
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -50,6 +52,7 @@ Graph FileReader::readGraphFromCSV(const std::string& path) {
         throw std::invalid_argument("Invalid CSV input");
     }
 
+    if (g.has_cycle()) throw std::runtime_error("Invalid CSV input (has_cycle)");
     if (g.get_num_nodes() == 0) throw std::runtime_error("Empty or invalid CSV graph");
 
     return g;
