@@ -23,5 +23,6 @@ pr_pal/
 generate_solution.py
 
 environments/
+bench/
 
 *.pdf
