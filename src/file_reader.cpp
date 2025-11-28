@@ -46,14 +46,13 @@ Graph FileReader::readGraphFromCSV(const std::string& path) {
                     break;
             }
         }
-    } catch (std::runtime_error) {
+    } catch (std::runtime_error&) {
         throw std::runtime_error("Malformed CSV input");
-    } catch (std::invalid_argument) {
+    } catch (std::invalid_argument&) {
         throw std::invalid_argument("Invalid CSV input");
     }
-
-    if (g.has_cycle()) throw std::runtime_error("Invalid CSV input (has_cycle)");
     if (g.get_num_nodes() == 0) throw std::runtime_error("Empty or invalid CSV graph");
+    if (g.construct_dag()) throw std::runtime_error("Invalid CSV input (has_cycle)");
 
     return g;
 };

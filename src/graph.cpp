@@ -5,6 +5,7 @@
 #include <ostream>
 #include <queue>
 #include <set>
+#include "helpers.h"
 
 #include "node.h"
 
@@ -18,16 +19,10 @@ void Graph::add_node(uint32_t AS) {
 void Graph::print(std::ostream& os) const {
     os << "Graph():\n\tnum_nodes_=" << num_nodes_ << "\n\tnum_edges_=" << num_edges_
        << "\n\tnum_customer_provider=" << num_customer_provider_ << "\n\tnum_peers_=" << num_peers_
-       << "\n"
-       << "{\n";
-    int node_count = 0;
-    for (const auto& pair : nodes_) {
-        if (node_count > 10) break;
-        os << pair.second << std::endl;
-        node_count++;
-    }
-    if (node_count > 10) os << "..." << std::endl;
-    os << "}";
+       << "\n";
+    os << "largest_provider=" << nodes_.at(largest_provider_.first) << '\n';
+    os << "largest_customer=" << nodes_.at(largest_customer_.first) << '\n';
+        
 }
 
 void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
@@ -41,6 +36,11 @@ void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
     if (nodes_.at(provider).get_customers().size() > largest_provider_.second) {
         largest_provider_.first = provider;
         largest_provider_.second = nodes_.at(provider).get_customers().size();
+    }
+
+    if (nodes_.at(customer).get_providers().size() > largest_customer_.second) {
+        largest_customer_.first = customer;
+        largest_customer_.second = nodes_.at(customer).get_customers().size();
     }
 }
 
@@ -68,18 +68,29 @@ const std::vector<uint32_t> Graph::bfs(uint32_t start_vertex) const {
     }
     return path;
 }
-
-const bool Graph::has_cycle() const {
+/*
+This function constructs the vector of vectors for the DAG object in the graph. 
+This function also appropriately updates the respective rank values for the Node objects in the Graph.
+This function returns true if the graph contains a cycle, otherwise false.
+*/
+bool Graph::construct_dag() {
     std::queue<uint32_t> q;
     std::unordered_map<uint32_t, uint32_t> in_degree;
 
     uint32_t visited = 0;
 
-    // 1) start by defining the in_degree for each node (looking for "pure providers")
+    uint32_t dag_size = 0;
+    DAG_.push_back({});
+
+    // 1) start by defining the in_degree for each node (looking for "pure customers")
     for (auto it = nodes_.begin(); it != nodes_.end(); it++) {
-        in_degree.try_emplace((*it).first, (*it).second.get_providers().size());
-        if ((*it).second.get_providers().size() == 0) {  // if a node has in_degree 0 {
+        in_degree.try_emplace((*it).first, (*it).second.get_customers().size());
+        if ((*it).second.get_customers().size() == 0) {  // if a node has in_degree 0 this means is is just a customer (lowest level customer)
             q.push((*it).first);
+            // if this node has no customers they belong in the first layer of the DAG
+            (*it).second.set_propagation_rank(0);
+            DAG_[0].push_back((*it).first);
+            dag_size++;
         }
     }
 
@@ -90,7 +101,7 @@ const bool Graph::has_cycle() const {
         q.pop();
         visited++;
 
-        for (auto& v : nodes_.at(u).get_customers()) {
+        for (auto& v : nodes_.at(u).get_providers()) {
             in_degree.at(v)--;
             if (in_degree.at(v) == 0) {
                 q.push(v);
@@ -98,7 +109,26 @@ const bool Graph::has_cycle() const {
         }
     }
 
-    return visited != num_nodes_;
+    if (visited != num_nodes_)
+        return true; // this means that the graph failed to construct (cycle) and we are done
+
+    //otherwise we should construct the dag (iterate through each node of rank 0 (pure providers) and obtain next rank, etc., etc.)
+    
+    int current_order = 0;
+    while (dag_size != num_nodes_) {
+        DAG_.push_back({}); // add a new layer
+        for (auto& as : DAG_[current_order]) {
+            for (auto& next_as : nodes_.at(as).get_providers()) {
+                if (nodes_.at(next_as).get_propagation_rank() != -1) continue;
+                DAG_[current_order + 1].push_back(next_as);
+                nodes_.at(next_as).set_propagation_rank(current_order+1);
+                dag_size++; 
+            }
+        }
+        current_order++;
+    }
+
+    return false;
 }
 
 void Graph::add_peer(uint32_t peer1, uint32_t peer2) {

@@ -63,3 +63,24 @@ TEST_F(GraphTest, TestReadFile) {
     EXPECT_EQ(g.get_num_nodes(), 9);
     EXPECT_EQ(g.get_nodes().size(), 9);
 }
+
+TEST_F(GraphTest, TestMalformedFile) {
+    EXPECT_THROW(FileReader::readGraphFromCSV("data/malformed.txt"), std::exception);
+}
+
+TEST_F(GraphTest, SimpleHasCycle) {
+    EXPECT_THROW(FileReader::readGraphFromCSV("data/simple_cycle.txt"), std::exception);
+}
+
+TEST_F(GraphTest, SimpleNoCycle) {
+    EXPECT_NO_THROW(FileReader::readGraphFromCSV("data/test.txt"));
+    EXPECT_NO_THROW(FileReader::readGraphFromCSV("data/test2.txt"));
+}
+TEST_F(GraphTest, TestRealDataModifiedForCycleHasCycle) {
+    EXPECT_THROW(FileReader::readGraphFromCSV("data/20250901.as-rel2-with_cycle.txt"),
+                 std::exception);
+}
+
+TEST_F(GraphTest, TestRealDataNoCycle) {
+    EXPECT_NO_THROW(FileReader::readGraphFromCSV("data/20250901.as-rel2.txt"));
+}

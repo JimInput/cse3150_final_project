@@ -1,0 +1,10 @@
+largest AS 401903
+
+AS1|AS2|relationship
+
+relationship:
+	0 = AS1 and AS2 are peers
+	1 = AS1 is customer and AS2 is provider
+	-1 = AS1 is provider and AS2 is customer
+
+graph has directed edges from provider to customer
