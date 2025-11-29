@@ -44,5 +44,9 @@ class Node {
         return propagation_rank_;
     }
 
+    BGP& get_policy() {
+        return policy_;
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const Node n);
 };

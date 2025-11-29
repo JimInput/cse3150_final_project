@@ -23,6 +23,9 @@ class Graph {
 
     void add_node(uint32_t AS);
     void print(std::ostream& os) const;
+    void upwards_propagate();
+    void downwards_propagate();
+    void cross_propagate();
 
    public:
     Graph()
@@ -54,17 +57,25 @@ class Graph {
     const std::pair<uint32_t, uint32_t> get_largest_customer() const {
         return largest_customer_;
     }
-    const std::unordered_map<uint32_t, Node>& get_nodes() const {
+    std::unordered_map<uint32_t, Node>& get_nodes() {
         return nodes_;
     }
 
-    const std::vector<std::vector<uint32_t>> get_DAG() const {
+    const std::vector<std::vector<uint32_t>>& get_DAG() const {
         return DAG_;
     }
 
     const std::vector<uint32_t> bfs(uint32_t start_vertex) const;
 
     bool construct_dag();
+
+    void seed_announcement(uint32_t AS, const Announcement& ann);
+
+    void propagate_announcements() {
+        upwards_propagate();
+        cross_propagate();
+        downwards_propagate();
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const Graph& g);
 };

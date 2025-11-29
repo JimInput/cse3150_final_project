@@ -10,10 +10,8 @@
 #include "node.h"
 
 void Graph::add_node(uint32_t AS) {
-    if (nodes_.find(AS) == nodes_.end()) {
-        auto [it, inserted] = nodes_.try_emplace(AS, AS);
-        if (inserted) ++num_nodes_;
-    }
+    auto [it, inserted] = nodes_.try_emplace(AS, AS);
+    if (inserted) ++num_nodes_;
 }
 
 void Graph::print(std::ostream& os) const {
@@ -24,6 +22,48 @@ void Graph::print(std::ostream& os) const {
     os << "largest_customer=" << nodes_.at(largest_customer_.first) << '\n';
         
 }
+
+void Graph::upwards_propagate() {
+    // start by iterating through rank 0 nodes and enqueue them for processing
+    std::queue<uint32_t> processing_queue;
+    for (int rank = 0; rank < DAG_.size(); rank++) {
+        for (auto& AS : DAG_[rank]) {
+            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
+                processing_queue.push(AS);
+            }
+        }
+
+        std::queue<uint32_t> nodes_to_update;
+        while (!processing_queue.empty()) {
+            uint32_t customer_AS = processing_queue.front();
+            processing_queue.pop();
+            Node& customer_node = nodes_.at(customer_AS);
+
+            for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
+                for (int i = 0; i < customer_node.get_providers().size(); i++) {
+                    auto& providers = customer_node.get_providers();
+                    nodes_.at(providers[i]).get_policy().add_to_queue(prefix, announcement);
+                    nodes_to_update.push(providers[i]);
+                }
+            }
+        }
+
+        while(!nodes_to_update.empty()) {
+            uint32_t as = nodes_to_update.front();
+            nodes_to_update.pop();
+            nodes_.at(as).get_policy().queue_to_rib(as, 1);
+        }
+
+
+    }
+    
+
+    
+}
+
+void Graph::downwards_propagate() {}
+
+void Graph::cross_propagate() {}
 
 void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
     add_node(customer);
@@ -138,6 +178,10 @@ void Graph::add_peer(uint32_t peer1, uint32_t peer2) {
     nodes_.at(peer2).add_peer(peer1);
     num_edges_++;
     num_peers_++;
+}
+
+void Graph::seed_announcement(uint32_t AS, const Announcement& ann) {
+    nodes_.at(AS).get_policy().add_to_RIB(ann.get_prefix(), ann);
 }
 
 std::ostream& operator<<(std::ostream& os, const Graph& g) {
