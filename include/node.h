@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ostream>
 #include <vector>
+
 #include "bgp.h"
 
 class Node {
@@ -11,13 +12,15 @@ class Node {
     std::vector<uint32_t> providers_;
     std::vector<uint32_t> customers_;
     std::vector<uint32_t> peers_;
-    int propagation_rank_; // this is defined in the construct dag function called in the file_reader.cpp
+    int propagation_rank_;  // this is defined in the construct dag function called in the
+                            // file_reader.cpp
     BGP policy_;
 
     void print(std::ostream& os) const;
 
    public:
-    Node(uint32_t AS) : AS_(AS), providers_(), customers_(), peers_(), propagation_rank_(-1), policy_() {}
+    Node(uint32_t AS)
+        : AS_(AS), providers_(), customers_(), peers_(), propagation_rank_(-1), policy_() {}
 
     void add_provider(uint32_t AS);
     void add_customer(uint32_t AS);
@@ -45,6 +48,10 @@ class Node {
     }
 
     BGP& get_policy() {
+        return policy_;
+    }
+
+    const BGP& get_policy() const {
         return policy_;
     }
 

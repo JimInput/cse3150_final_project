@@ -20,7 +20,6 @@ class Graph {
     std::pair<uint32_t, uint32_t> largest_customer_;
     std::vector<std::vector<uint32_t>> DAG_;
 
-
     void add_node(uint32_t AS);
     void print(std::ostream& os) const;
     void upwards_propagate();
@@ -61,6 +60,10 @@ class Graph {
         return nodes_;
     }
 
+    const std::unordered_map<uint32_t, Node>& get_nodes() const {
+        return nodes_;
+    }
+
     const std::vector<std::vector<uint32_t>>& get_DAG() const {
         return DAG_;
     }
@@ -75,6 +78,12 @@ class Graph {
         upwards_propagate();
         cross_propagate();
         downwards_propagate();
+
+        std::cout << "announcements have fully propagated" << std::endl;
+    }
+
+    void update_rov(uint32_t AS, bool rov) {
+        nodes_.at(AS).get_policy().set_rov(rov);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Graph& g);

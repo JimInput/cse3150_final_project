@@ -5,8 +5,8 @@
 #include <ostream>
 #include <queue>
 #include <set>
-#include "helpers.h"
 
+#include "helpers.h"
 #include "node.h"
 
 void Graph::add_node(uint32_t AS) {
@@ -20,13 +20,12 @@ void Graph::print(std::ostream& os) const {
        << "\n";
     os << "largest_provider=" << nodes_.at(largest_provider_.first) << '\n';
     os << "largest_customer=" << nodes_.at(largest_customer_.first) << '\n';
-        
 }
 
 void Graph::upwards_propagate() {
     // start by iterating through rank 0 nodes and enqueue them for processing
     std::queue<uint32_t> processing_queue;
-    for (int rank = 0; rank < DAG_.size(); rank++) {
+    for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
         for (auto& AS : DAG_[rank]) {
             if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
                 processing_queue.push(AS);
@@ -40,7 +39,7 @@ void Graph::upwards_propagate() {
             Node& customer_node = nodes_.at(customer_AS);
 
             for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
-                for (int i = 0; i < customer_node.get_providers().size(); i++) {
+                for (int i = 0; i < static_cast<int>(customer_node.get_providers().size()); i++) {
                     auto& providers = customer_node.get_providers();
                     nodes_.at(providers[i]).get_policy().add_to_queue(prefix, announcement);
                     nodes_to_update.push(providers[i]);
@@ -48,22 +47,79 @@ void Graph::upwards_propagate() {
             }
         }
 
-        while(!nodes_to_update.empty()) {
+        while (!nodes_to_update.empty()) {
             uint32_t as = nodes_to_update.front();
             nodes_to_update.pop();
             nodes_.at(as).get_policy().queue_to_rib(as, 1);
         }
-
-
     }
-    
-
-    
 }
 
-void Graph::downwards_propagate() {}
+void Graph::downwards_propagate() {
+    std::queue<uint32_t> processing_queue;
+    for (int rank = static_cast<int>(DAG_.size())-1; rank > 0; rank--) {
+        for (auto& AS : DAG_[rank]) {
+            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
+                processing_queue.push(AS);
+            }
+        }
 
-void Graph::cross_propagate() {}
+        std::queue<uint32_t> nodes_to_update;
+        while (!processing_queue.empty()) {
+            uint32_t provider_AS = processing_queue.front();
+            processing_queue.pop();
+            Node& provider_node = nodes_.at(provider_AS);
+
+            for (auto& [prefix, announcement] : provider_node.get_policy().get_RIB()) {
+                for (int i = 0; i < static_cast<int>(provider_node.get_customers().size()); i++) {
+                    auto& customers = provider_node.get_customers();
+                    nodes_.at(customers[i]).get_policy().add_to_queue(prefix, announcement);
+                    nodes_to_update.push(customers[i]);
+                }
+            }
+        }
+
+        while (!nodes_to_update.empty()) {
+            uint32_t as = nodes_to_update.front();
+            nodes_to_update.pop();
+            nodes_.at(as).get_policy().queue_to_rib(as, 2);
+        }
+    }
+}
+
+void Graph::cross_propagate() {
+    // enqueue every node with an announcement first (using the DAG for this)
+    std::queue<uint32_t> processing_queue;
+    for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
+        for (auto& AS : DAG_[rank]) {
+            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
+                processing_queue.push(AS);
+            }
+        }
+    }
+
+    std::queue<uint32_t> nodes_to_update;
+    while (!processing_queue.empty()) {
+        uint32_t as = processing_queue.front();
+        processing_queue.pop();
+        Node& peer_node = nodes_.at(as);
+
+        for (auto& [prefix, announcement] : peer_node.get_policy().get_RIB()) {
+            for (int i = 0; i < static_cast<int>(peer_node.get_peers().size()); i++) {
+                auto& peers = peer_node.get_peers();
+                nodes_.at(peers[i]).get_policy().add_to_queue(prefix, announcement);
+                nodes_to_update.push(peers[i]);
+            }
+        }
+    }
+
+    while (!nodes_to_update.empty()) {
+        uint32_t as = nodes_to_update.front();
+        nodes_to_update.pop();
+        nodes_.at(as).get_policy().queue_to_rib(as, 2);
+    }
+
+}
 
 void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
     add_node(customer);
@@ -109,9 +165,9 @@ const std::vector<uint32_t> Graph::bfs(uint32_t start_vertex) const {
     return path;
 }
 /*
-This function constructs the vector of vectors for the DAG object in the graph. 
-This function also appropriately updates the respective rank values for the Node objects in the Graph.
-This function returns true if the graph contains a cycle, otherwise false.
+This function constructs the vector of vectors for the DAG object in the graph.
+This function also appropriately updates the respective rank values for the Node objects in the
+Graph. This function returns true if the graph contains a cycle, otherwise false.
 */
 bool Graph::construct_dag() {
     std::queue<uint32_t> q;
@@ -125,7 +181,9 @@ bool Graph::construct_dag() {
     // 1) start by defining the in_degree for each node (looking for "pure customers")
     for (auto it = nodes_.begin(); it != nodes_.end(); it++) {
         in_degree.try_emplace((*it).first, (*it).second.get_customers().size());
-        if ((*it).second.get_customers().size() == 0) {  // if a node has in_degree 0 this means is is just a customer (lowest level customer)
+        if ((*it).second.get_customers().size() ==
+            0) {  // if a node has in_degree 0 this means is is just a customer (lowest level
+                  // customer)
             q.push((*it).first);
             // if this node has no customers they belong in the first layer of the DAG
             (*it).second.set_propagation_rank(0);
@@ -150,19 +208,20 @@ bool Graph::construct_dag() {
     }
 
     if (visited != num_nodes_)
-        return true; // this means that the graph failed to construct (cycle) and we are done
+        return true;  // this means that the graph failed to construct (cycle) and we are done
 
-    //otherwise we should construct the dag (iterate through each node of rank 0 (pure providers) and obtain next rank, etc., etc.)
-    
+    // otherwise we should construct the dag (iterate through each node of rank 0 (pure providers)
+    // and obtain next rank, etc., etc.)
+
     int current_order = 0;
     while (dag_size != num_nodes_) {
-        DAG_.push_back({}); // add a new layer
+        DAG_.push_back({});  // add a new layer
         for (auto& as : DAG_[current_order]) {
             for (auto& next_as : nodes_.at(as).get_providers()) {
                 if (nodes_.at(next_as).get_propagation_rank() != -1) continue;
                 DAG_[current_order + 1].push_back(next_as);
-                nodes_.at(next_as).set_propagation_rank(current_order+1);
-                dag_size++; 
+                nodes_.at(next_as).set_propagation_rank(current_order + 1);
+                dag_size++;
             }
         }
         current_order++;

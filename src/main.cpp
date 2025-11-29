@@ -4,30 +4,26 @@
 #include <utility>
 #include <vector>
 
+#include "announcement.h"
+#include "bgp.h"
 #include "file_reader.h"
 #include "graph.h"
-#include "announcement.h"
 #include "helpers.h"
 #include "node.h"
-#include "bgp.h"
+#include "file_writer.h"
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cout << "Usage: ./program.out [FILE_PATH]";
+    if (argc != 5) {
+        std::cout << "Usage: ./program.out [GRAPH_FILE_PATH] [ANNOUNCEMENT_FILE_PATH] [ROV_AS_PATH] [RIBS_OUT_PATH]\n";
         return -1;
     }
 
     try {
-        // Graph g = FileReader::readGraphFromCSV("data/20250901.as-rel2.txt");
         Graph g = FileReader::readGraphFromCSV(argv[1]);
-        std::cout << "successfully built graph" << std::endl;
-        g.seed_announcement(777, Announcement("1.2.0.0/16", 777, 0));
-        // print_container(std::cout, g.get_nodes().at(1).get_policy().get_RIB().at(std::string("1.2.0.0/16")).get_AS_path());
+        FileReader::updateROV(g, argv[3]);
+        FileReader::seedAnnouncements(g, argv[2]);
         g.propagate_announcements();
-        print_container(std::cout, g.get_nodes().at(4).get_policy().get_RIB().at("1.2.0.0/16").get_AS_path());
-
-
-        
+        FileWriter::writeRibs(g, argv[4]);
 
         return 0;
     } catch (const std::exception& e) {
