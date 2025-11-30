@@ -9,6 +9,12 @@ project(
   VERSION ${SKBUILD_PROJECT_VERSION}
   LANGUAGES CXX)
 
+# --- Request C++17 ---
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+# ---------------------
+
 # Find pybind11 and Python
 find_package(pybind11 CONFIG REQUIRED)
 
