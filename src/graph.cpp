@@ -1,6 +1,7 @@
 // Copyright 2025 Jimmy Padilla (oJimmy05o@gmail.com)
 #include "graph.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <ostream>
 #include <queue>
@@ -23,69 +24,116 @@ void Graph::print(std::ostream& os) const {
 }
 
 void Graph::upwards_propagate() {
-    // start by iterating through rank 0 nodes and enqueue them for processing
-    std::queue<uint32_t> processing_queue;
+    // Single-pass rank-based propagation per PDF Section 3.5
     for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
+        // Step 1: All nodes at this rank send to their providers
         for (auto& AS : DAG_[rank]) {
             if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
-                processing_queue.push(AS);
-            }
-        }
-
-        std::queue<uint32_t> nodes_to_update;
-        while (!processing_queue.empty()) {
-            uint32_t customer_AS = processing_queue.front();
-            processing_queue.pop();
-            Node& customer_node = nodes_.at(customer_AS);
-
-            for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
-                for (int i = 0; i < static_cast<int>(customer_node.get_providers().size()); i++) {
-                    auto& providers = customer_node.get_providers();
-                    nodes_.at(providers[i]).get_policy().add_to_queue(prefix, announcement);
-                    nodes_to_update.push(providers[i]);
+                Node& customer_node = nodes_.at(AS);
+                for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
+                    for (auto& provider : customer_node.get_providers()) {
+                        nodes_.at(provider).get_policy().add_to_queue(
+                            prefix,
+                            announcement.next_node(provider, AS, 1)
+                        );
+                    }
                 }
             }
         }
 
-        while (!nodes_to_update.empty()) {
-            uint32_t as = nodes_to_update.front();
-            nodes_to_update.pop();
-            nodes_.at(as).get_policy().queue_to_rib(as, 1);
+        // Step 2: Process ALL nodes that received announcements (can be at any rank)
+        if (rank + 1 < static_cast<int>(DAG_.size())) {
+            for (auto& AS : DAG_[rank+1]) {
+                nodes_.at(AS).get_policy().queue_to_rib();
+            }
         }
     }
 }
+
+/* ORIGINAL CODE (rank-based approach that didn't work):
+void Graph::upwards_propagate() {
+    for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
+        std::set<uint32_t> nodes_to_process;
+
+        // Step 1: All nodes at this rank send to their providers
+        for (auto& AS : DAG_[rank]) {
+            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
+                Node& customer_node = nodes_.at(AS);
+                for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
+                    for (auto& provider : customer_node.get_providers()) {
+                        nodes_.at(provider).get_policy().add_to_queue(
+                            prefix,
+                            announcement.next_node(provider, 1, announcement.get_rov_invalid())
+                        );
+                        nodes_to_process.insert(provider);
+                    }
+                }
+            }
+        }
+
+        // Step 2: Process ALL nodes that received announcements (at ANY rank)
+        for (auto& asn : nodes_to_process) {
+            nodes_.at(asn).get_policy().queue_to_rib();
+        }
+    }
+}
+*/
 
 void Graph::downwards_propagate() {
-    std::queue<uint32_t> processing_queue;
-    for (int rank = static_cast<int>(DAG_.size())-1; rank > 0; rank--) {
+    // Single-pass rank-based propagation per PDF Section 3.5
+    for (int rank = static_cast<int>(DAG_.size()) - 1; rank >= 0; rank--) {
+        // Step 1: All nodes at this rank send to their customers
         for (auto& AS : DAG_[rank]) {
             if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
-                processing_queue.push(AS);
-            }
-        }
-
-        std::queue<uint32_t> nodes_to_update;
-        while (!processing_queue.empty()) {
-            uint32_t provider_AS = processing_queue.front();
-            processing_queue.pop();
-            Node& provider_node = nodes_.at(provider_AS);
-
-            for (auto& [prefix, announcement] : provider_node.get_policy().get_RIB()) {
-                for (int i = 0; i < static_cast<int>(provider_node.get_customers().size()); i++) {
-                    auto& customers = provider_node.get_customers();
-                    nodes_.at(customers[i]).get_policy().add_to_queue(prefix, announcement);
-                    nodes_to_update.push(customers[i]);
+                Node& provider_node = nodes_.at(AS);
+                for (auto& [prefix, announcement] : provider_node.get_policy().get_RIB()) {
+                    for (auto& customer : provider_node.get_customers()) {
+                        nodes_.at(customer).get_policy().add_to_queue(
+                            prefix,
+                            announcement.next_node(customer, AS, 3)
+                        );
+                    }
                 }
             }
         }
 
-        while (!nodes_to_update.empty()) {
-            uint32_t as = nodes_to_update.front();
-            nodes_to_update.pop();
-            nodes_.at(as).get_policy().queue_to_rib(as, 2);
+        // Step 2: Process ALL nodes that received announcements (can be at any rank)
+        if (rank - 1 >= 0) {
+            for (auto& AS : DAG_[rank-1]) {
+                nodes_.at(AS).get_policy().queue_to_rib();
+            }
         }
     }
 }
+
+/* ORIGINAL CODE (rank-based approach that didn't work):
+void Graph::downwards_propagate() {
+    for (int rank = static_cast<int>(DAG_.size()) - 1; rank >= 0; rank--) {
+        std::set<uint32_t> nodes_to_process;
+
+        // Step 1: All nodes at this rank send to their customers
+        for (auto& AS : DAG_[rank]) {
+            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
+                Node& provider_node = nodes_.at(AS);
+                for (auto& [prefix, announcement] : provider_node.get_policy().get_RIB()) {
+                    for (auto& customer : provider_node.get_customers()) {
+                        nodes_.at(customer).get_policy().add_to_queue(
+                            prefix,
+                            announcement.next_node(customer, 3, announcement.get_rov_invalid())
+                        );
+                        nodes_to_process.insert(customer);
+                    }
+                }
+            }
+        }
+
+        // Step 2: Process ALL nodes that received announcements (at ANY rank)
+        for (auto& asn : nodes_to_process) {
+            nodes_.at(asn).get_policy().queue_to_rib();
+        }
+    }
+}
+*/
 
 void Graph::cross_propagate() {
     // enqueue every node with an announcement first (using the DAG for this)
@@ -107,7 +155,10 @@ void Graph::cross_propagate() {
         for (auto& [prefix, announcement] : peer_node.get_policy().get_RIB()) {
             for (int i = 0; i < static_cast<int>(peer_node.get_peers().size()); i++) {
                 auto& peers = peer_node.get_peers();
-                nodes_.at(peers[i]).get_policy().add_to_queue(prefix, announcement);
+                nodes_.at(peers[i]).get_policy().add_to_queue(
+                    prefix,
+                    announcement.next_node(peers[i], as, 2)  // receiver=peer, sender=as
+                );
                 nodes_to_update.push(peers[i]);
             }
         }
@@ -116,7 +167,7 @@ void Graph::cross_propagate() {
     while (!nodes_to_update.empty()) {
         uint32_t as = nodes_to_update.front();
         nodes_to_update.pop();
-        nodes_.at(as).get_policy().queue_to_rib(as, 2);
+        nodes_.at(as).get_policy().queue_to_rib();
     }
 
 }
@@ -210,21 +261,40 @@ bool Graph::construct_dag() {
     if (visited != num_nodes_)
         return true;  // this means that the graph failed to construct (cycle) and we are done
 
-    // otherwise we should construct the dag (iterate through each node of rank 0 (pure providers)
-    // and obtain next rank, etc., etc.)
+    // Correctly assign ranks: each node's rank = MAX(all customer ranks) + 1
+    // This ensures providers are always at higher ranks than ALL their customers
 
-    int current_order = 0;
-    while (dag_size != num_nodes_) {
-        DAG_.push_back({});  // add a new layer
-        for (auto& as : DAG_[current_order]) {
-            for (auto& next_as : nodes_.at(as).get_providers()) {
-                if (nodes_.at(next_as).get_propagation_rank() != -1) continue;
-                DAG_[current_order + 1].push_back(next_as);
-                nodes_.at(next_as).set_propagation_rank(current_order + 1);
-                dag_size++;
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (auto& [asn, node] : nodes_) {
+            if (node.get_propagation_rank() == -1) continue;  // Skip unassigned nodes
+
+            // For each provider of this node, ensure provider's rank > this node's rank
+            for (auto& provider_asn : node.get_providers()) {
+                int required_rank = node.get_propagation_rank() + 1;
+                if (nodes_.at(provider_asn).get_propagation_rank() < required_rank) {
+                    // Remove from old rank if already placed
+                    int old_rank = nodes_.at(provider_asn).get_propagation_rank();
+                    if (old_rank != -1) {
+                        auto& old_vec = DAG_[old_rank];
+                        old_vec.erase(std::remove(old_vec.begin(), old_vec.end(), provider_asn), old_vec.end());
+                    } else {
+                        dag_size++;
+                    }
+
+                    // Ensure DAG has enough ranks
+                    while (static_cast<int>(DAG_.size()) <= required_rank) {
+                        DAG_.push_back({});
+                    }
+
+                    // Assign to new rank
+                    DAG_[required_rank].push_back(provider_asn);
+                    nodes_.at(provider_asn).set_propagation_rank(required_rank);
+                    changed = true;
+                }
             }
         }
-        current_order++;
     }
 
     return false;

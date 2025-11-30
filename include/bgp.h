@@ -32,43 +32,56 @@ class BGP {
         rov_ = rov;
     }
 
-    void queue_to_rib(uint32_t as, short relation) {
+    void queue_to_rib() {
         for (auto& [prefix, announcement_list] : recieved_queue_) {
-            short min_relation = announcement_list[0].get_relation();
-            int min_length_path = announcement_list[0].get_AS_path().size();
-            uint32_t min_next_hop_AS = announcement_list[0].get_next_hop_AS();
-            int min_idx = 0;
-            for (int i = 1; i < static_cast<int>(announcement_list.size()); ++i) {
+            int min_idx = -1;  // Start with no valid announcement
+            // Find the best valid announcement
+            for (int i = 0; i < static_cast<int>(announcement_list.size()); ++i) {
                 if (rov_ && announcement_list[i].get_rov_invalid()) continue;
-                if (announcement_list[i].get_relation() > min_relation) continue;
-                if (announcement_list[i].get_relation() < min_relation) {
-                    min_relation = announcement_list[i].get_relation();
-                    min_length_path = announcement_list[i].get_AS_path().size();
-                    min_next_hop_AS = announcement_list[i].get_next_hop_AS();
-                    min_idx = i;
-                }
-                if (static_cast<int>(announcement_list[i].get_AS_path().size()) > min_length_path) continue;
-                if (static_cast<int>(announcement_list[i].get_AS_path().size()) < min_length_path) {
-                    min_relation = announcement_list[i].get_relation();
-                    min_length_path = announcement_list[i].get_AS_path().size();
-                    min_next_hop_AS = announcement_list[i].get_next_hop_AS();
-                    min_idx = i;
-                }
-                if (announcement_list[i].get_next_hop_AS() > min_next_hop_AS) continue;
-                if (announcement_list[i].get_next_hop_AS() < min_next_hop_AS) {
-                    min_relation = announcement_list[i].get_relation();
-                    min_length_path = announcement_list[i].get_AS_path().size();
-                    min_next_hop_AS = announcement_list[i].get_next_hop_AS();
+                if (min_idx == -1 || more_appropriate_announcement(announcement_list[i], announcement_list[min_idx])) {
                     min_idx = i;
                 }
             }
-            Announcement original_announcement = announcement_list[min_idx];
-            if (!(original_announcement.get_rov_invalid() && rov_)) {
-                Announcement updated_announcement = original_announcement.next_node(as, relation, original_announcement.get_rov_invalid());
-                add_to_RIB(prefix, updated_announcement);
+
+            // Only store if we found a valid announcement
+            if (min_idx != -1) {
+                if (RIB_.find(prefix) == RIB_.end() || more_appropriate_announcement(announcement_list[min_idx], RIB_.at(prefix)))
+                    RIB_[prefix] = announcement_list[min_idx];
             }
         }
         recieved_queue_.clear();
+    }
+
+    /* ORIGINAL queue_to_rib (no debug):
+    void queue_to_rib() {
+        for (auto& [prefix, announcement_list] : recieved_queue_) {
+            int min_idx = 0;
+            for (int i = 1; i < static_cast<int>(announcement_list.size()); ++i) {
+                if (rov_ && announcement_list[i].get_rov_invalid()) continue;
+                if (more_appropriate_announcement(announcement_list[i], announcement_list[min_idx]))
+                    min_idx = i;
+            }
+            if (!(announcement_list[min_idx].get_rov_invalid() && rov_)) {
+                if (RIB_.find(prefix) == RIB_.end() || more_appropriate_announcement(announcement_list[min_idx], RIB_.at(prefix)))
+                    RIB_[prefix] = announcement_list[min_idx];
+            }
+        }
+        recieved_queue_.clear();
+    }
+    */
+
+    bool more_appropriate_announcement(const Announcement& a, const Announcement& b) {
+        if (a.get_relation() < b.get_relation())
+            return true;
+        if (b.get_relation() < a.get_relation())
+            return false;
+        if (a.get_AS_path().size() < b.get_AS_path().size())
+            return true;
+        if (b.get_AS_path().size() < a.get_AS_path().size())
+            return false;
+        if (a.get_next_hop_AS() < b.get_next_hop_AS())
+            return true;
+        return false;
     }
 
     std::unordered_map<std::string, Announcement>& get_RIB() {

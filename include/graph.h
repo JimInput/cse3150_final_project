@@ -75,12 +75,36 @@ class Graph {
     void seed_announcement(uint32_t AS, const Announcement& ann);
 
     void propagate_announcements() {
-        upwards_propagate();
-        cross_propagate();
-        downwards_propagate();
+      int before = 0;
+      for (const auto& [asn, node] : nodes_) {
+          if (!node.get_policy().get_RIB().empty()) before++;
+      }
+      std::cout << "Before propagation: " << before << " nodes\n";
 
-        std::cout << "announcements have fully propagated" << std::endl;
-    }
+      upwards_propagate();
+
+      int after_up = 0;
+      for (const auto& [asn, node] : nodes_) {
+          if (!node.get_policy().get_RIB().empty()) after_up++;
+      }
+      std::cout << "After upward: " << after_up << " nodes\n";
+
+      cross_propagate();
+
+      int after_cross = 0;
+      for (const auto& [asn, node] : nodes_) {
+          if (!node.get_policy().get_RIB().empty()) after_cross++;
+      }
+      std::cout << "After cross: " << after_cross << " nodes\n";
+
+      downwards_propagate();
+
+      int after_down = 0;
+      for (const auto& [asn, node] : nodes_) {
+          if (!node.get_policy().get_RIB().empty()) after_down++;
+      }
+      std::cout << "After downward: " << after_down << " nodes\n";
+  }
 
     void update_rov(uint32_t AS, bool rov) {
         nodes_.at(AS).get_policy().set_rov(rov);

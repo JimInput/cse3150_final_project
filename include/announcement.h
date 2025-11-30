@@ -14,6 +14,7 @@ class Announcement {
     bool rov_invalid_;
 
    public:
+    Announcement() = default;
     Announcement(std::string prefix, uint32_t curr_AS, short relation, bool rov_invalid)
         : prefix_(prefix),
           AS_path_({curr_AS}),
@@ -54,9 +55,11 @@ class Announcement {
     }
 
     // 0 = origin , 1 = customer
-    Announcement next_node(uint32_t as, short relation, bool rov_invalid) const {
+    // receiver_as: AS being added to path (current node receiving announcement)
+    // sender_as: AS that sent this announcement (next_hop)
+    Announcement next_node(uint32_t receiver_as, uint32_t sender_as, short relation) const {
         std::vector<uint32_t> new_AS_path_(AS_path_);
-        new_AS_path_.push_back(as);
-        return Announcement(prefix_, new_AS_path_, as, relation, rov_invalid);
+        new_AS_path_.push_back(receiver_as);  // Add receiver to path
+        return Announcement(prefix_, new_AS_path_, sender_as, relation, rov_invalid_);  // Set next_hop to sender
     }
 };

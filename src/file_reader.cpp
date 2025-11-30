@@ -102,11 +102,11 @@ void FileReader::seedAnnouncements(Graph& g, const std::string& path) {
 
             asn = std::stoul(line.substr(0, pos[0]));
             prefix = line.substr(pos[0]+1, pos[1]-(pos[0]+1));
-            if (line.substr(pos[1]+1) == "True") {
-                invalid = true;
-            } else {
-                invalid = false;
+            std::string value = line.substr(pos[1]+1);
+            while (!value.empty() && (value.back() == '\r' || value.back() == '\n' || value.back() == ' ' || value.back() == '\t')) {
+                value.pop_back();
             }
+            invalid = (value == "True");
             
             g.seed_announcement(asn, Announcement(prefix, asn, 0, invalid));
         }
