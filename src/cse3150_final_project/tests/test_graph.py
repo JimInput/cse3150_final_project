@@ -38,11 +38,12 @@ def test_compare_outputs(case_name):
 
     # Run the script with absolute paths. Call bash explicitly so exec bit is not required.
     result = subprocess.run(
-        [str(script_path), str(ribs_path), str(out_path)],
+        ["bash", str(script_path), str(ribs_path), str(out_path)],
         capture_output=True,
         text=True,
-        # cwd=bench_dir   # uncomment if the script expects to run from the case folder
+        # cwd=bench_dir
     )
+
 
     # Helpful failure message including stdout/stderr
     assert result.returncode == 0
