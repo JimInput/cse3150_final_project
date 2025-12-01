@@ -77,7 +77,8 @@ void FileReader::updateROV(Graph& g, const std::string& path) {
 }
 void FileReader::seedAnnouncements(Graph& g, const std::string& path) {
     std::ifstream file(path);
-    if (!file.is_open()) throw std::runtime_error("Failed to open input announcements file: " + path);
+    if (!file.is_open())
+        throw std::runtime_error("Failed to open input announcements file: " + path);
 
     try {
         std::string line;
@@ -94,20 +95,20 @@ void FileReader::seedAnnouncements(Graph& g, const std::string& path) {
 
             size_t pos[2];
 
-            
             pos[0] = line.find(',');
             if (pos[0] == std::string::npos) throw std::runtime_error("Malformed CSV input");
-            pos[1] = line.find(',', pos[0]+1);
+            pos[1] = line.find(',', pos[0] + 1);
             if (pos[1] == std::string::npos) throw std::runtime_error("Malformed CSV input");
 
             asn = std::stoul(line.substr(0, pos[0]));
-            prefix = line.substr(pos[0]+1, pos[1]-(pos[0]+1));
-            std::string value = line.substr(pos[1]+1);
-            while (!value.empty() && (value.back() == '\r' || value.back() == '\n' || value.back() == ' ' || value.back() == '\t')) {
+            prefix = line.substr(pos[0] + 1, pos[1] - (pos[0] + 1));
+            std::string value = line.substr(pos[1] + 1);
+            while (!value.empty() && (value.back() == '\r' || value.back() == '\n' ||
+                                      value.back() == ' ' || value.back() == '\t')) {
                 value.pop_back();
             }
             invalid = (value == "True");
-            
+
             g.seed_announcement(asn, Announcement(prefix, asn, 0, invalid));
         }
     } catch (std::runtime_error&) {

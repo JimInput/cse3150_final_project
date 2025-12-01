@@ -1,9 +1,11 @@
 # tests/test_compare_outputs.py
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
 import pytest
 
 from cse3150_final_project._core import FileReader, FileWriter
+
 
 @pytest.mark.parametrize("case_name", [
     # "many",
@@ -40,7 +42,7 @@ def test_compare_outputs(case_name):
     result = subprocess.run(
         ["bash", str(script_path), str(ribs_path), str(out_path)],
         capture_output=True,
-        text=True,
+        text=True, check=False,
         # cwd=bench_dir
     )
 

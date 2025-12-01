@@ -10,6 +10,9 @@
 #include "helpers.h"
 #include "node.h"
 
+/*
+Adds node AS to the graph if it didn't already exist.
+*/
 void Graph::add_node(uint32_t AS) {
     auto [it, inserted] = nodes_.try_emplace(AS, AS);
     if (inserted) ++num_nodes_;
@@ -23,8 +26,10 @@ void Graph::print(std::ostream& os) const {
     os << "largest_customer=" << nodes_.at(largest_customer_.first) << '\n';
 }
 
+/*
+Propagates all announcements up the ranks.
+*/
 void Graph::upwards_propagate() {
-    // Single-pass rank-based propagation per PDF Section 3.5
     for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
         // Step 1: All nodes at this rank send to their providers
         for (auto& AS : DAG_[rank]) {
@@ -33,54 +38,26 @@ void Graph::upwards_propagate() {
                 for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
                     for (auto& provider : customer_node.get_providers()) {
                         nodes_.at(provider).get_policy().add_to_queue(
-                            prefix,
-                            announcement.next_node(provider, AS, 1)
-                        );
+                            prefix, announcement.next_node(provider, AS, 1));
                     }
                 }
             }
         }
 
-        // Step 2: Process ALL nodes that received announcements (can be at any rank)
+        // Step 2: Process the nodes which just recieved announcements from the providers of rank
+        // rank.
         if (rank + 1 < static_cast<int>(DAG_.size())) {
-            for (auto& AS : DAG_[rank+1]) {
+            for (auto& AS : DAG_[rank + 1]) {
                 nodes_.at(AS).get_policy().queue_to_rib();
             }
         }
     }
 }
 
-/* ORIGINAL CODE (rank-based approach that didn't work):
-void Graph::upwards_propagate() {
-    for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
-        std::set<uint32_t> nodes_to_process;
-
-        // Step 1: All nodes at this rank send to their providers
-        for (auto& AS : DAG_[rank]) {
-            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
-                Node& customer_node = nodes_.at(AS);
-                for (auto& [prefix, announcement] : customer_node.get_policy().get_RIB()) {
-                    for (auto& provider : customer_node.get_providers()) {
-                        nodes_.at(provider).get_policy().add_to_queue(
-                            prefix,
-                            announcement.next_node(provider, 1, announcement.get_rov_invalid())
-                        );
-                        nodes_to_process.insert(provider);
-                    }
-                }
-            }
-        }
-
-        // Step 2: Process ALL nodes that received announcements (at ANY rank)
-        for (auto& asn : nodes_to_process) {
-            nodes_.at(asn).get_policy().queue_to_rib();
-        }
-    }
-}
+/*
+Propagates announcements down the ranks.
 */
-
 void Graph::downwards_propagate() {
-    // Single-pass rank-based propagation per PDF Section 3.5
     for (int rank = static_cast<int>(DAG_.size()) - 1; rank >= 0; rank--) {
         // Step 1: All nodes at this rank send to their customers
         for (auto& AS : DAG_[rank]) {
@@ -89,54 +66,26 @@ void Graph::downwards_propagate() {
                 for (auto& [prefix, announcement] : provider_node.get_policy().get_RIB()) {
                     for (auto& customer : provider_node.get_customers()) {
                         nodes_.at(customer).get_policy().add_to_queue(
-                            prefix,
-                            announcement.next_node(customer, AS, 3)
-                        );
+                            prefix, announcement.next_node(customer, AS, 3));
                     }
                 }
             }
         }
 
-        // Step 2: Process ALL nodes that received announcements (can be at any rank)
+        // Step 2: Process nodes that recieved announcements from the nodes of rank rank.
         if (rank - 1 >= 0) {
-            for (auto& AS : DAG_[rank-1]) {
+            for (auto& AS : DAG_[rank - 1]) {
                 nodes_.at(AS).get_policy().queue_to_rib();
             }
         }
     }
 }
 
-/* ORIGINAL CODE (rank-based approach that didn't work):
-void Graph::downwards_propagate() {
-    for (int rank = static_cast<int>(DAG_.size()) - 1; rank >= 0; rank--) {
-        std::set<uint32_t> nodes_to_process;
-
-        // Step 1: All nodes at this rank send to their customers
-        for (auto& AS : DAG_[rank]) {
-            if (!nodes_.at(AS).get_policy().get_RIB().empty()) {
-                Node& provider_node = nodes_.at(AS);
-                for (auto& [prefix, announcement] : provider_node.get_policy().get_RIB()) {
-                    for (auto& customer : provider_node.get_customers()) {
-                        nodes_.at(customer).get_policy().add_to_queue(
-                            prefix,
-                            announcement.next_node(customer, 3, announcement.get_rov_invalid())
-                        );
-                        nodes_to_process.insert(customer);
-                    }
-                }
-            }
-        }
-
-        // Step 2: Process ALL nodes that received announcements (at ANY rank)
-        for (auto& asn : nodes_to_process) {
-            nodes_.at(asn).get_policy().queue_to_rib();
-        }
-    }
-}
+/*
+Propagates announcements across one peer connection.
 */
-
 void Graph::cross_propagate() {
-    // enqueue every node with an announcement first (using the DAG for this)
+    // enqueue every node with an announcement first
     std::queue<uint32_t> processing_queue;
     for (int rank = 0; rank < static_cast<int>(DAG_.size()); rank++) {
         for (auto& AS : DAG_[rank]) {
@@ -147,6 +96,9 @@ void Graph::cross_propagate() {
     }
 
     std::queue<uint32_t> nodes_to_update;
+
+    // now we process every node with an announcement, and all nodes that are now send an
+    // announcement are enqueued onto nodes_to_update.
     while (!processing_queue.empty()) {
         uint32_t as = processing_queue.front();
         processing_queue.pop();
@@ -156,22 +108,26 @@ void Graph::cross_propagate() {
             for (int i = 0; i < static_cast<int>(peer_node.get_peers().size()); i++) {
                 auto& peers = peer_node.get_peers();
                 nodes_.at(peers[i]).get_policy().add_to_queue(
-                    prefix,
-                    announcement.next_node(peers[i], as, 2)  // receiver=peer, sender=as
+                    prefix, announcement.next_node(peers[i], as, 2)  // receiver=peer, sender=as
                 );
                 nodes_to_update.push(peers[i]);
             }
         }
     }
 
+    // finally after sending all announcements update the ribs of all nodes which recieved
+    // announcements.
     while (!nodes_to_update.empty()) {
         uint32_t as = nodes_to_update.front();
         nodes_to_update.pop();
         nodes_.at(as).get_policy().queue_to_rib();
     }
-
 }
 
+/*
+Adds a customer_provider edge to the graph, creating either the customer or provider nodes if they
+didn't already exist.
+*/
 void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
     add_node(customer);
     add_node(provider);
@@ -191,6 +147,9 @@ void Graph::add_customer_provider(uint32_t customer, uint32_t provider) {
     }
 }
 
+/*
+Performs a breadth-first-search through the graph starting at start_vertex.
+*/
 const std::vector<uint32_t> Graph::bfs(uint32_t start_vertex) const {
     std::set<uint32_t> visited;
     std::queue<uint32_t> q;
@@ -215,6 +174,7 @@ const std::vector<uint32_t> Graph::bfs(uint32_t start_vertex) const {
     }
     return path;
 }
+
 /*
 This function constructs the vector of vectors for the DAG object in the graph.
 This function also appropriately updates the respective rank values for the Node objects in the
@@ -261,9 +221,8 @@ bool Graph::construct_dag() {
     if (visited != num_nodes_)
         return true;  // this means that the graph failed to construct (cycle) and we are done
 
-    // Correctly assign ranks: each node's rank = MAX(all customer ranks) + 1
+    // Each node's rank = MAX(all customer ranks) + 1
     // This ensures providers are always at higher ranks than ALL their customers
-
     bool changed = true;
     while (changed) {
         changed = false;
@@ -278,7 +237,8 @@ bool Graph::construct_dag() {
                     int old_rank = nodes_.at(provider_asn).get_propagation_rank();
                     if (old_rank != -1) {
                         auto& old_vec = DAG_[old_rank];
-                        old_vec.erase(std::remove(old_vec.begin(), old_vec.end(), provider_asn), old_vec.end());
+                        old_vec.erase(std::remove(old_vec.begin(), old_vec.end(), provider_asn),
+                                      old_vec.end());
                     } else {
                         dag_size++;
                     }
@@ -300,6 +260,9 @@ bool Graph::construct_dag() {
     return false;
 }
 
+/*
+Adds a peer connection to the graph, while also construction any nodes that didn't already exist.
+*/
 void Graph::add_peer(uint32_t peer1, uint32_t peer2) {
     add_node(peer1);
     add_node(peer2);
@@ -309,8 +272,46 @@ void Graph::add_peer(uint32_t peer1, uint32_t peer2) {
     num_peers_++;
 }
 
+/*
+Seeds an announcement in the graph for propagation.
+*/
 void Graph::seed_announcement(uint32_t AS, const Announcement& ann) {
     nodes_.at(AS).get_policy().add_to_RIB(ann.get_prefix(), ann);
+}
+
+/*
+Propagates announcements upwards, then cross one gap, then finally downwards.
+*/
+void Graph::propagate_announcements() {
+    int before = 0;
+    for (const auto& [asn, node] : nodes_) {
+        if (!node.get_policy().get_RIB().empty()) before++;
+    }
+    std::cout << "Before propagation: " << before << " nodes\n";
+
+    upwards_propagate();
+
+    int after_up = 0;
+    for (const auto& [asn, node] : nodes_) {
+        if (!node.get_policy().get_RIB().empty()) after_up++;
+    }
+    std::cout << "After upward: " << after_up << " nodes\n";
+
+    cross_propagate();
+
+    int after_cross = 0;
+    for (const auto& [asn, node] : nodes_) {
+        if (!node.get_policy().get_RIB().empty()) after_cross++;
+    }
+    std::cout << "After cross: " << after_cross << " nodes\n";
+
+    downwards_propagate();
+
+    int after_down = 0;
+    for (const auto& [asn, node] : nodes_) {
+        if (!node.get_policy().get_RIB().empty()) after_down++;
+    }
+    std::cout << "After downward: " << after_down << " nodes\n";
 }
 
 std::ostream& operator<<(std::ostream& os, const Graph& g) {

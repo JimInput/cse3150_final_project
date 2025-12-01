@@ -26,5 +26,4 @@ void print_reverse_container(std::ostream& os, const Con& con) {
     } else {
         os << *std::prev(con.rend()) << ",)\"";
     }
-    
 }

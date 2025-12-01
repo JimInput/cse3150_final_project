@@ -1,5 +1,7 @@
-from cse3150_final_project._core import Graph, FileReader, FileWriter
 import argparse
+
+from cse3150_final_project._core import FileReader, FileWriter
+
 
 def main():
     parser = argparse.ArgumentParser(description="Process four input files.")
@@ -18,6 +20,6 @@ def main():
         FileWriter.writeRibs(g, args.output_file)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-    
+
 if __name__ == '__main__':
     main()

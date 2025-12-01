@@ -24,6 +24,8 @@ python_add_library(_core MODULE
   src/cpp/main.cpp
   src/cpp/src/node.cpp
   src/cpp/src/graph.cpp
+  src/cpp/src/announcement.cpp
+  src/cpp/src/bgp.cpp
   src/cpp/src/file_reader.cpp
   src/cpp/src/file_writer.cpp
   WITH_SOABI)

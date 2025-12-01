@@ -1,13 +1,13 @@
 // Copyright 2025 Jimmy Padilla (oJimmy05o@gmail.com)
 #include "file_writer.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <cstdint>
-#include <algorithm>
 
 #include "graph.h"
 #include "helpers.h"
@@ -33,7 +33,8 @@ void FileWriter::writeRibs(const Graph& g, const std::string& path) {
     // 3. Iterate through the sorted keys and access map elements
     for (const uint32_t& key : keys) {
         std::vector<std::string> prefixes;
-        const std::unordered_map<std::string, Announcement>& rib_map = g.get_nodes().at(key).get_policy().get_RIB();
+        const std::unordered_map<std::string, Announcement>& rib_map =
+            g.get_nodes().at(key).get_policy().get_RIB();
 
         for (const auto& pair : rib_map) {
             prefixes.push_back(pair.first);
