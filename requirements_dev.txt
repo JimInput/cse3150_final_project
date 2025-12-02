@@ -1,0 +1,6 @@
+pytest
+pathlib
+mypy
+ruff
+pre-commit
+tox

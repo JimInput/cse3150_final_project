@@ -4,8 +4,6 @@ war_game
 *.out
 
 # Output files
-*.csv
-!test_data/*.csv
 
 # Python
 __pycache__/
@@ -21,5 +19,9 @@ __pycache__/
 # Other
 pr_pal/
 generate_solution.py
+many/
+
+environments/
+build/
 
 *.pdf
